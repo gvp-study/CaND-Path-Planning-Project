@@ -243,21 +243,34 @@ int main() {
 	  auto sensor_fusion = j[1]["sensor_fusion"];
 
 	  int prev_size = previous_path_x.size();
-	  printf("Previous path size %d\n", prev_size);
+	  //	  printf("Previous path size %d\n", prev_size);
 		
 	  if(prev_size > 0)
 	    {
 	      car_s = end_path_s;
 	    }
-
+	  // Find if lane is occupied and decide on lane to change to.
 	  bool too_close = false;
-
-	  // Find ref_v to use.
+	  bool left_free = false;
+	  bool right_free = false;
+	  int current_lane = lane;
+	  int left_lane = lane - 1;
+	  int right_lane = lane + 1;
+	  // Go through all other cars. Find ref_v to use.
 	  for(int i = 0; i < sensor_fusion.size(); i++)
 	    {
 	      // Car is in my lane.
 	      float d = sensor_fusion[i][6];
-	      if(d < (2+4*lane+2) && d > (2+4*lane-2))
+	      bool left_lane_free = (left_lane >= 0 && !(d < (2+4*left_lane+2) && d > (2+4*left_lane-2)));
+	      bool right_lane_free = (right_lane >= 0 && !(d < (2+4*right_lane+2) && d > (2+4*right_lane-2)));
+	      bool current_lane_free = !(d < (2+4*lane+2) && d > (2+4*lane-2));
+	      printf("Other Car No %d d %.2f Current Lane %d Speed %.0f : %s %s %s\n", 
+		     i, d, current_lane, ref_vel,
+		     current_lane_free ? "Current Lane Free" : "Current Block",
+		     left_lane_free ? "Left Lane Free" : "Left Block", 
+		     right_lane_free ? "Right Lane Free" : "Right Block");
+
+	      if(!current_lane_free)
 		{
 		  double vx = sensor_fusion[i][3];
 		  double vy = sensor_fusion[i][4];
@@ -273,11 +286,61 @@ int main() {
 		      too_close = true;
 		      if(lane > 0)
 			{
+			  if(left_lane_free)
+			    lane = lane-1 > -1 ? lane-1 : lane;
+			}
+		      else
+			{
+			  if(right_lane_free)
+			    lane = lane+1 < 3 ? lane+1 : lane;
+			}
+		    }
+		}
+	      /*
+	      else if(left_lane_free)
+		{
+		  double vx = sensor_fusion[i][3];
+		  double vy = sensor_fusion[i][4];
+		  double check_speed = hypot(vx, vy);
+		  double check_car_s = sensor_fusion[i][5];
+
+		  check_car_s += ((double)prev_size*0.02*check_speed);
+		  // Check s values greater than mine and s gap
+		  if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
+		    {
+		      // Do some logic here, lower reference velocity so we dont crash into the car
+		      // also flag to try to change lanes.
+		      lane = lane - 1;
+		      if(lane < 0)
+			{
 			  lane = 0;
 			}
 		    }
 		}
+	      else if(right_lane_free)
+		{
+		  double vx = sensor_fusion[i][3];
+		  double vy = sensor_fusion[i][4];
+		  double check_speed = hypot(vx, vy);
+		  double check_car_s = sensor_fusion[i][5];
+
+		  check_car_s += ((double)prev_size*0.02*check_speed);
+		  // Check s values greater than mine and s gap
+		  if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
+		    {
+		      // Do some logic here, lower reference velocity so we dont crash into the car
+		      // also flag to try to change lanes.
+		      lane = lane + 1;
+		      if(lane > 2)
+			{
+			  lane = 2;
+			}
+		    }
+		}
+	      */
+
 	    }
+
 	  if(too_close)
 	    {
 	      ref_vel -= 0.224;
@@ -309,8 +372,8 @@ int main() {
 
 	      ptsy.push_back(prev_car_y);
 	      ptsy.push_back(car_y);
-	      printf("Current XYT0 %.0f %.0f %.0f Previous %.0f %.0f\n",
-		     car_x, car_y, car_yaw, prev_car_x, prev_car_y);
+	      //	      printf("Current XYT0 %.0f %.0f %.0f Previous %.0f %.0f\n",
+	      //		     car_x, car_y, car_yaw, prev_car_x, prev_car_y);
 	    }
 	  // Use the previous path and end point as starting reference.
 	  else
@@ -330,8 +393,8 @@ int main() {
 	      ptsy.push_back(ref_y_prev);
 	      ptsy.push_back(ref_y);
 
-	      printf("Current XYT %.0f %.0f %.0f Previous %.0f %.0f\n",
-		     ref_x, ref_y, ref_yaw, ref_x_prev, ref_y_prev);
+	      //	      printf("Current XYT %.0f %.0f %.0f Previous %.0f %.0f\n",
+	      //		     ref_x, ref_y, ref_yaw, ref_x_prev, ref_y_prev);
 	    }
 
 	  // In Frenet coords, add evenly 30m spaced points ahead of the starting reference.
@@ -355,7 +418,7 @@ int main() {
 
 	      ptsx[i] = (shift_x * cos(0-ref_yaw) - shift_y*sin(0-ref_yaw));
 	      ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y*cos(0-ref_yaw));
-	      printf("Spline point %d -> %.2f %.2f\n", i, ptsx[i], ptsy[i]);
+	      //	      printf("Spline point %d -> %.2f %.2f\n", i, ptsx[i], ptsy[i]);
 	    }
 
 	  // Create a spline.
@@ -368,7 +431,7 @@ int main() {
 	  vector<double> next_x_vals;
 	  vector<double> next_y_vals;
 	  
-	  printf("Prev Points %d\n", (int) previous_path_x.size());
+	  //	  printf("Prev Points %d\n", (int) previous_path_x.size());
 	  // Start with all the previous path points from last time.
 	  for(int i = 0; i < previous_path_x.size(); i++)
 	    {
@@ -404,9 +467,9 @@ int main() {
 
 	      next_x_vals.push_back(x_point);
 	      next_y_vals.push_back(y_point);
-	      if(i < 5)
-		printf("Next Pts [ %d %.2f] Points %.0f %.0f\n",
-		     i+(int)previous_path_x.size(), x_add_on, x_point, y_point);
+	      //	      if(i < 5)
+	      //		printf("Next Pts [ %d %.2f] Points %.0f %.0f\n",
+	      //		     i+(int)previous_path_x.size(), x_add_on, x_point, y_point);
 
 	    }
 	  
