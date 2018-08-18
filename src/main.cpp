@@ -313,22 +313,25 @@ int main() {
 		      right_lane_free &= (lane < 2 && !(d < (2+4*right_lane+2) && d > (2+4*right_lane-2)));
 		    }
 		}
-	      if(lane > 0)
+	      bool changed = false;
+	      if(!changed && lane > 0)
 		{
 		  if(left_lane_free)
 		    {
 		      printf("Current Lane %d Left Lane changed to %d\n", lane, lane-1 > -1 ? lane-1 : lane);
 		      lane = lane-1 > -1 ? lane-1 : lane;
 		      //		      ref_vel += 0.224;
+		      changed = true;
 		    }
 		}
-	      if(lane < 2)
+	      if(!changed && lane < 2)
 		{
 		  if(right_lane_free)
 		    {
 		      printf("Current Lane %d Right Lane changed to %d\n", lane, lane+1 < 3 ? lane+1 : lane);
 		      lane = lane+1 < 3 ? lane+1 : lane;
 		      //		      ref_vel += 0.224;
+		      changed = true;
 		    }
 		}
 	      printf("Current Lane %d Speed %.0f : %s %s\n", 
