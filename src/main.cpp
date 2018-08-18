@@ -257,18 +257,13 @@ int main() {
 	  int left_lane = lane - 1;
 	  int right_lane = lane + 1;
 	  // Go through all other cars. Find ref_v to use.
+	  bool right_lane_free = true;
 	  for(int i = 0; i < sensor_fusion.size(); i++)
 	    {
 	      // Car is in my lane.
 	      float d = sensor_fusion[i][6];
-	      bool left_lane_free = (left_lane >= 0 && !(d < (2+4*left_lane+2) && d > (2+4*left_lane-2)));
-	      bool right_lane_free = (right_lane >= 0 && !(d < (2+4*right_lane+2) && d > (2+4*right_lane-2)));
 	      bool current_lane_free = !(d < (2+4*lane+2) && d > (2+4*lane-2));
-	      printf("Other Car No %d d %.2f Current Lane %d Speed %.0f : %s %s %s\n", 
-		     i, d, current_lane, ref_vel,
-		     current_lane_free ? "Current Lane Free" : "Current Block",
-		     left_lane_free ? "Left Lane Free" : "Left Block", 
-		     right_lane_free ? "Right Lane Free" : "Right Block");
+
 
 	      if(!current_lane_free)
 		{
@@ -284,61 +279,8 @@ int main() {
 		      // Do some logic here, lower reference velocity so we dont crash into the car
 		      // also flag to try to change lanes.
 		      too_close = true;
-		      if(lane > 0)
-			{
-			  if(left_lane_free)
-			    lane = lane-1 > -1 ? lane-1 : lane;
-			}
-		      else
-			{
-			  if(right_lane_free)
-			    lane = lane+1 < 3 ? lane+1 : lane;
-			}
 		    }
 		}
-	      /*
-	      else if(left_lane_free)
-		{
-		  double vx = sensor_fusion[i][3];
-		  double vy = sensor_fusion[i][4];
-		  double check_speed = hypot(vx, vy);
-		  double check_car_s = sensor_fusion[i][5];
-
-		  check_car_s += ((double)prev_size*0.02*check_speed);
-		  // Check s values greater than mine and s gap
-		  if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
-		    {
-		      // Do some logic here, lower reference velocity so we dont crash into the car
-		      // also flag to try to change lanes.
-		      lane = lane - 1;
-		      if(lane < 0)
-			{
-			  lane = 0;
-			}
-		    }
-		}
-	      else if(right_lane_free)
-		{
-		  double vx = sensor_fusion[i][3];
-		  double vy = sensor_fusion[i][4];
-		  double check_speed = hypot(vx, vy);
-		  double check_car_s = sensor_fusion[i][5];
-
-		  check_car_s += ((double)prev_size*0.02*check_speed);
-		  // Check s values greater than mine and s gap
-		  if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
-		    {
-		      // Do some logic here, lower reference velocity so we dont crash into the car
-		      // also flag to try to change lanes.
-		      lane = lane + 1;
-		      if(lane > 2)
-			{
-			  lane = 2;
-			}
-		    }
-		}
-	      */
-
 	    }
 
 	  if(too_close)
@@ -349,6 +291,53 @@ int main() {
 	    {
 	      ref_vel += 0.224;
 	    }
+	  if(too_close)
+	    {
+	      bool left_lane_free = true;
+	      bool right_lane_free = true;
+
+	      for(int i = 0; i < sensor_fusion.size(); i++)
+		{
+		  // Car is in left lane.
+		  float d = sensor_fusion[i][6];
+		  double vx = sensor_fusion[i][3];
+		  double vy = sensor_fusion[i][4];
+		  double check_speed = hypot(vx, vy);
+		  double check_car_s = sensor_fusion[i][5];
+
+		  check_car_s += ((double)prev_size*0.02*check_speed);
+		  // Check s values greater than mine and s gap
+		  if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
+		    {
+		      left_lane_free &= (lane >= 0 && !(d < (2+4*left_lane+2) && d > (2+4*left_lane-2)));
+		      right_lane_free &= (lane < 2 && !(d < (2+4*right_lane+2) && d > (2+4*right_lane-2)));
+		    }
+		}
+	      if(lane > 0)
+		{
+		  if(left_lane_free)
+		    {
+		      printf("Current Lane %d Left Lane changed to %d\n", lane, lane-1 > -1 ? lane-1 : lane);
+		      lane = lane-1 > -1 ? lane-1 : lane;
+		      //		      ref_vel += 0.224;
+		    }
+		}
+	      if(lane < 2)
+		{
+		  if(right_lane_free)
+		    {
+		      printf("Current Lane %d Right Lane changed to %d\n", lane, lane+1 < 3 ? lane+1 : lane);
+		      lane = lane+1 < 3 ? lane+1 : lane;
+		      //		      ref_vel += 0.224;
+		    }
+		}
+	      printf("Current Lane %d Speed %.0f : %s %s\n", 
+		     current_lane, ref_vel,
+		     left_lane_free ? "Left Lane Free" : "Left Block", 
+		     right_lane_free ? "Right Lane Free" : "Right Block");
+
+	    }
+	  
 	  // Create a lit of widely spaced waypoints (x,y) which are evenly spaced at 30m.
 	  // Later we will interpolate these waypoints with a spline and fill it in with more points
 	  vector<double> ptsx;
