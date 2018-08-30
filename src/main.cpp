@@ -244,7 +244,6 @@ int main() {
 		    auto sensor_fusion = j[1]["sensor_fusion"];
 
 		    int prev_size = previous_path_x.size();
-		    printf("Previous path size %d\n", prev_size);
 		
 		    if(prev_size > 0)
 		    {
@@ -374,8 +373,6 @@ int main() {
 
 			ptsy.push_back(prev_car_y);
 			ptsy.push_back(car_y);
-			//	      printf("Current XYT0 %.0f %.0f %.0f Previous %.0f %.0f\n",
-			//		     car_x, car_y, car_yaw, prev_car_x, prev_car_y);
 		    }
 		    // Use the previous path and end point as starting reference.
 		    else
@@ -395,8 +392,6 @@ int main() {
 			ptsy.push_back(ref_y_prev);
 			ptsy.push_back(ref_y);
 
-			//	      printf("Current XYT %.0f %.0f %.0f Previous %.0f %.0f\n",
-			//		     ref_x, ref_y, ref_yaw, ref_x_prev, ref_y_prev);
 		    }
 		    //
 		    // In Frenet coords, add evenly 30m spaced points ahead of the starting reference.
@@ -423,9 +418,6 @@ int main() {
 
 			ptsx[i] = (shift_x * cos(0-ref_yaw) - shift_y*sin(0-ref_yaw));
 			ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y*cos(0-ref_yaw));
-			if(i < 6)
-			    printf("Spline point %d / %d -> %.2f %.2f\n",
-				   i, (int)ptsx.size(), ptsx[i], ptsy[i]);
 		    }
 
 		    // Create a spline.
@@ -438,47 +430,13 @@ int main() {
 		    vector<double> next_x_vals;
 		    vector<double> next_y_vals;
 	  
-		    printf("Prev Points %d\n", (int) previous_path_x.size());
 		    // Start with all the previous path points from last time.
-		    double px0 = 0.0;
-		    double py0 = 0.0;
-		    double pt0 = 0.0;
-		    if(previous_path_x.size() > 0)
-		    {
-			px0 = previous_path_x[0];
-			py0 = previous_path_y[0];
-			double dx = (double)previous_path_x[1] - px0;
-			double dy = (double)previous_path_y[1] - py0;
-			pt0 = atan2(dy, dx);
-		    }
-		    double pxp = px0;
-		    double pyp = py0;
-		    double prev_dist = 0.0;
 		    for(int i = 0; i < previous_path_x.size(); i++)
 		    {
 			double px = previous_path_x[i];
 			double py = previous_path_y[i];
 			next_x_vals.push_back(px);
 			next_y_vals.push_back(py);
-			prev_dist += hypot(px-pxp, py-pyp);
-			pxp = px;
-			pyp = py;
-			double sx = px - px0;
-			double sy = py - py0;
-			double rx = (sx * cos(0-pt0) - sy*sin(0-pt0));
-			double ry = (sx * sin(0-pt0) + sy*cos(0-pt0));
-
-			if(i < 6)
-			    printf("Prev path point %d / %d : %g %g : %g %g Added to next %d D %g\n",
-				   i, (int)previous_path_x.size(),
-				   px, py, rx, ry, (int)next_x_vals.size(), prev_dist);
-		       
-			if(i > 44)
-			    printf("Prev path point %d / %d : %g %g : %g %g Added to next %d D %g\n",
-				   i, (int)previous_path_x.size(),
-				   px, py, rx, ry, (int)next_x_vals.size(), prev_dist);
-
-		
 		    }
 		    // Calculate how to break up spline points so that we travel at our desired reference velocity.
 		    double target_x = 30.0;
@@ -495,10 +453,6 @@ int main() {
 			double x_point = x_add_on+incr_x;
 			double y_point = s(x_point);
 
-			printf("Adding to Next %d of %d Pts at I %g : %g %g Next size %d\n",
-			       i, (int)N, incr_x,
-			       x_point, y_point, (int)next_x_vals.size()+1);
-
 			x_add_on = x_point;
 
 			double x_ref = x_point;
@@ -514,25 +468,8 @@ int main() {
 			next_x_vals.push_back(x_point);
 			next_y_vals.push_back(y_point);
 	      
-			//	      if(i < 5)
-			//		printf("Next Pts [ %d %.2f] Points %.0f %.0f\n",
-			//		     i+(int)previous_path_x.size(), x_add_on, x_point, y_point);
 
 		    }
-	  
-		    /*
-		      double dist_inc = 0.5;
-		      for(int i = 0; i < 50; i++)
-		      {
-		      double next_s = car_s + (i+1) * dist_inc;
-		      double next_d = 6;
-		      vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-		      //		    next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-		      //		    next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
-		      next_x_vals.push_back(xy[0]);
-		      next_y_vals.push_back(xy[1]);
-		      }
-		    */
 		    json msgJson;
 
 		    msgJson["path_planning_x"] = previous_path_x;
